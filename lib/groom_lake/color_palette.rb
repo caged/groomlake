@@ -1,35 +1,21 @@
+$KCODE = 'UTF-8'
+require 'iconv'
 require 'base'
 
-module GroomLake
+# Copyright (c) 2007 Active Reload, LLC.
+# Parses Photoshop ACO files, version 1 and 2.
+#
+# Version 2 files contain version 1 information too, so some data is repeated.
+
+module GroomLake 
   class ColorPalette < Base
-    @swatches = []
-    attr_accessor :swatches
-    
-    @color_spaces = {
-      :RGB  => [0, 'nnn'],
-      :CMYK => [2, 'nnnn']
-    }
-    attr_accessor :color_formats
         
     def initialize(preset_file = nil)
       super
-      @header = { 
-        :version => [2, 'n'], 
-        :size    => [2, 'n'] 
-      }
-      
-      @version1_swatch = {
-        :space => [2, 'n'], 
-        :data  => :parse_color_space
-      }
-      
-      @version2_swatch = {
-        :space => [2, 'n'],
-        :data  => :parse_color_space,
-        :name  => :parse_name
-      }
+      @swatches = []
       
       parse_aco_file unless @io.nil?
+      puts @swatches.inspect
     end
     
     def parse_aco_file
@@ -38,22 +24,58 @@ module GroomLake
     end
     
     def parse_header
-      @io.read(@header[:version][0]).unpack(@header[:version][1])[0]
-      @size = @io.read(@header[:size][0]).unpack(@header[:size][1])[0]
+      @io.read(2).unpack('n')[0] # Skip version #
+      @size = @io.read(2).unpack('n')[0] # How many swatches do we have
     end
     
     def parse_swatches
-      1.upto(@size) do
-        parse_color_data(@io.read(10))
+      version1_pos = @io.pos
+      @io.read(10 * @size) # Skip all version 1 info
+      unless @io.eof?
+        @io.read(4) # Size repeated
+        1.upto(@size) do 
+          color_data = parse_color_data(@io.read(10))
+          name_length = @io.read(4).unpack('xxn')[0]
+          utf8_name  = @io.read(name_length * 2).unpack('C*').pack('U*')
+          name = Iconv.iconv('UTF-8', 'UTF-16', utf8_name)[0].chop
+          @swatches << color_data.merge(:name => name)
+        end
+      else
+        @io.pos = version1_pos #Version 2 isn't here, go back and pick up version 1 info
+        1.upto(@size) do
+          @swatches < parse_color_data(@io.read(10))
+        end
       end
     end
       
-    def parse_color_data(io)
-      space = io.unpack('n')
+    def parse_color_data(d)
+      space, data = d.unpack("na*")
       case space
-        when 3 then space = 'Pantone'
-        when 4 then space = 'Focaltone'
+      when 0
+        space = :RGB
+        data = data.unpack("nnn")
+      when 1
+        space = :HSB
+        data = data.unpack("nnn")
+      when 2
+        space = :CMYK
+        data = data.unpack("nnnn")
+      when 3 then space = :Pantone
+      when 4 then space = :Focoltone
+      when 5 then space = :Trumatch
+      when 6 then space = :Toyo88colorfinder1050
+      when 7
+        space = :Lab
+        l = [10000, data[0,2].unpack("n")[0]].min
+        a = [12700, [-12800, data[2,2].reverse.unpack("s")[0]].max].min
+        b = [12700, [-12800, data[4,2].reverse.unpack("s")[0]].max].min
+        data = [l, a, b]
+      when 8
+        space = :grayscale
+        data = [10000, data.unpack("n")[0]].min
+      when 10 then space = :HKS
       end
+      {:space => space, :components => data}
     end
   end
 end
