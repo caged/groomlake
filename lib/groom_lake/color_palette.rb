@@ -9,7 +9,8 @@ require 'base'
 
 module GroomLake 
   class ColorPalette < Base
-        
+    attr_reader :swatches
+    
     def initialize(preset_file = nil)
       super
       @swatches = []
@@ -53,10 +54,14 @@ module GroomLake
       case space
       when 0
         space = :RGB
-        data = data.unpack("nnn")
+        data = data.unpack("nnn").collect { |c| c/256 }
       when 1
         space = :HSB
-        data = data.unpack("nnn")
+        hsb = data.unpack("nnn")
+        hsb[0] = (hsb[0]/182.04).round
+        hsb[1] = (hsb[1]/655.35).round
+        hsb[2] = (hsb[2]/655.35).round
+        data = hsb
       when 2
         space = :CMYK
         data = data.unpack("nnnn")
@@ -80,4 +85,4 @@ module GroomLake
   end
 end
 
-GroomLake::ColorPalette.new('../../test/presets/teal1.aco')
+GroomLake::ColorPalette.new('../../test/presets/oddgreen.aco')
