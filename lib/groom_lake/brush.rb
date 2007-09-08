@@ -25,35 +25,59 @@ module GroomLake
     
     def parse_brushes
       @version = @io.read(2).unpack('n')[0]
+      puts "VERSION #{@version}"
       case @version
       when 6
         @subversion = @io.read(2).unpack('n')[0]
+        puts "SUBV: #{@subversion}"
         @io.read(8) #8BIMsamp
-        sample = @io.read(4).unpack('N')[0]
-        endsample = sample + 12
+        
+        sample_size = @io.read(4).unpack('N')[0]
+        endsample = sample_size + 12
+        
         while(@io.pos < endsample - 1)
           #brush size in bytes
           brush_size = @io.read(4).unpack('N')[0]
           brush_end = brush_size
-          
+          puts "BRUSH SIZE: #{brush_size}"
           while(brush_end % 4 != 0) 
             brush_end += 1
           end
-          four_byte_compliment = brush_end - brush_size
-          key = @io.read(36 * 2).unpack('C')[0]
-
+          offset = brush_end - brush_size
+          puts "FBC: #{offset}"
+          puts "POS1: #{@io.pos}"
+          key = @io.read(37)
+          puts "POS2: #{@io.pos}"
+          
           if @subversion == 1
             puts 'yeah'
           elsif @subversion == 2
             @io.pos += 264
-            padw, padh = @io.read(8).unpack('nn')
-            height, width = @io.read(8).unpack('xxNxxN')
-            # puts @io.read(4).unpack('n')
-            # puts @io.read(4).unpack('n')
-            # puts @io.read(4).unpack('N')
-            # puts @io.read(4).unpack('N')
-            
+            padh, padw = @io.read(8).unpack('NN')
+            puts "W: #{padw}, H: #{padh}"
+            height, width = @io.read(8).unpack('NN')
+            width -= padw
+            height -= padh
+            puts "WW: #{width}, HH: #{height}"
           end
+          
+          depth = @io.read(2).unpack('n')[0]
+          puts "DEPTH: #{depth}"
+          compression = @io.read(1).unpack('b')[0]
+          
+          scanline_image = 0
+          height.times do 
+            scanline_image = scanline_image + @io.read(2).unpack('n')[0]
+          end
+          scan = @io.read(scanline_image)
+          write_image(Time.now.to_s + 'brush', width, height, scan)
+          
+          @io.read(offset) if @subversion == 1
+          if(@subversion == 2)
+            @io.read(8)
+            @io.read(offset)
+          end
+          
           return
         end
         
@@ -107,7 +131,6 @@ module GroomLake
             else
               puts "HEIGHT: #{brush_height}"
               scanline_image = 0
-              puts @io.pos
               brush_height.times do 
                 scanline_image = scanline_image + @io.read(2).unpack('n')[0]
               end
@@ -148,10 +171,19 @@ module GroomLake
       return image
     end
     
+    def write_image(name, width, height, scanline_data)
+      img = Magick::Image.new(width, height)
+      unpacked_data = unpack_scanline_data(scanline_data)
+      img.import_pixels(0, 0, width, height, "A", unpacked_data, Magick::CharPixel)
+      img.format = "PNG"
+      img = img.colorize(1, 1, 1, '#000000')
+      img.write('../../vendor/' + name.downcase + ".png")
+    end
+    
   end
 end
 
 #GroomLake::Brush.new('../../test/presets/three-various-brushes.abr')
 #GroomLake::Brush.new('../../test/presets/cs2-square-brushes.abr')
-#GroomLake::Brush.new('../../test/presets/onesquare24hard.abr')
-GroomLake::Brush.new('../../test/presets/cs2-oldbooks.abr')
+GroomLake::Brush.new('../../test/presets/onesquare24hard.abr')
+#GroomLake::Brush.new('../../test/presets/cs2-oldbooks.abr')
