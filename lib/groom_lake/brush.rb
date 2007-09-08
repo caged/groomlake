@@ -183,7 +183,7 @@ module GroomLake
   end
 end
 
-#GroomLake::Brush.new('../../test/presets/three-various-brushes.abr')
+GroomLake::Brush.new('../../test/presets/three-various-brushes.abr')
 #GroomLake::Brush.new('../../test/presets/cs2-square-brushes.abr')
-GroomLake::Brush.new('../../test/presets/onesquare24hard.abr')
+#GroomLake::Brush.new('../../test/presets/onesquare24hard.abr')
 #GroomLake::Brush.new('../../test/presets/cs2-oldbooks.abr')
