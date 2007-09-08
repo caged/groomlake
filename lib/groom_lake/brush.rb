@@ -1,4 +1,6 @@
 $KCODE = 'UTF-8'
+require 'rubygems'
+require 'RMagick'
 require 'iconv'
 require 'base'
 require 'stringio'
@@ -57,11 +59,15 @@ module GroomLake
         
       when 2
         brush_count = @io.read(2).unpack('n')[0]
+        puts brush_count
         1.upto(brush_count) do
+          
           #Brush type, 1 = computed, 2 = sampled
           type = @io.read(2).unpack('n')[0]
+          
           #Number of bytes in the remainder of the brush definition
-          @io.read(4).unpack('i')
+          brush_bytes = @io.read(4).unpack('N')
+          
           if type == 1
             @io.read(14) if @version == 1
           elsif type == 2
@@ -69,6 +75,7 @@ module GroomLake
             
             #brush spacing
             spacing = @io.read(2).unpack('n')
+            puts "SPACING: #{spacing}"
             
             # Length of the brush name
             name_length = @io.read(4).unpack('xxn')[0]
@@ -87,29 +94,60 @@ module GroomLake
             brush_width = lright - lleft
             brush_height = lbottom - ltop
             
+            puts brush_width
+            puts brush_height
+            
             depth = @io.read(2).unpack('n')[0]
-            compression = @io.read(2).unpack('b')[0]
+            puts "DEPTH: #{depth}"
+            compression = @io.read(1).unpack('b')[0]
+            puts "COMPRESSION: #{compression}"
             
             if compression == 0
               decompression_data = @io.read(brush_width * brush_height)
             else
+              puts "HEIGHT: #{brush_height}"
               scanline_image = 0
-              brush_height.times do 
-                scanline_image += @io.read(2).unpack('n')[0]
-              end
               puts @io.pos
+              brush_height.times do 
+                scanline_image = scanline_image + @io.read(2).unpack('n')[0]
+              end
+              puts "SCI: #{scanline_image}"
               scan = @io.read(scanline_image)
-              upack_scanline_data(scan)
+              img = Magick::Image.new(brush_width, brush_height)
+              unpacked_data = unpack_scanline_data(scan)
+              img.import_pixels(0, 0, brush_width, brush_height, "A", unpacked_data, Magick::CharPixel)
+              img.format = "PNG"
+              img = img.colorize(1, 1, 1, '#000000')
+              img.write('../../vendor/' + name.downcase + ".png")
             end
           end
         end
       end
     end
     
-    def upack_scanline_data(data)
+    # Unpack a scanline image using the PackBits algorithm.
+    def unpack_scanline_data(data)
       str = StringIO.new(data)
-      puts str.unpack('n*')
+      image = []
+      until str.eof?
+        count = str.readchar
+        count = -256 + count if(count >= 128) 
+        if(count >= 0)
+          continue if(count == -128)
+          (count + 1).times do  
+            image << str.readchar
+          end
+        else
+          copy = str.readchar
+          count = -count + 1
+          count.times do
+            image << copy 
+          end
+        end          
+      end
+      return image
     end
+    
   end
 end
 

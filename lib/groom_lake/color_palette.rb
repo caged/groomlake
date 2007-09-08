@@ -16,6 +16,7 @@ module GroomLake
       @swatches = []
       
       parse_aco_file unless @io.nil?
+      puts @swatches.inspect
     end
     
     def parse_aco_file
@@ -84,4 +85,4 @@ module GroomLake
   end
 end
 
-GroomLake::ColorPalette.new('../../test/presets/oddgreen.aco')
+GroomLake::ColorPalette.new('../../test/presets/whitegreen.aco')
