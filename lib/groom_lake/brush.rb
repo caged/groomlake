@@ -31,13 +31,13 @@ module GroomLake
     def parse_brushes
       case @version
       when 6
-       parse_version_6
+       parse_version_six
       when 2
-        parse_version_12
+        parse_version_one_or_two
       end
     end
     
-    def parse_version_12
+    def parse_version_one_or_two
       puts "VERSION 2"
       puts '-' * 100
       
@@ -99,16 +99,16 @@ module GroomLake
       end
     end
     
-    def parse_version_6
+    def parse_version_six
         @io.read(4) # Begin 8BIM tag
         type = @io.read(4) # [samp|pat|desc]
         
         sample_size = @io.read(4).unpack('N')[0]
         puts "SSIZE: #{sample_size}"
-        @io.pos = sample_size
-        endsample = sample_size + 12
+        sample_end = sample_size + 12
+        puts "POS: #{@io.pos}, SAMP: #{sample_end}"
         
-        while(@io.pos < endsample - 1)
+        while(@io.pos < sample_end - 1)
           #brush size in bytes
           brush_size = @io.read(4).unpack('N')[0]
           brush_end = brush_size
@@ -118,7 +118,6 @@ module GroomLake
           end
           offset = brush_end - brush_size
           puts "FBC: #{offset}"
-          puts "POS1: #{@io.pos}"
           key = @io.read(37)
           # name_length = @io.read(4).unpack('xxn')[0]
           
@@ -133,7 +132,6 @@ module GroomLake
             height, width = @io.read(8).unpack('NN')
             width -= padw
             height -= padh
-            puts "WW: #{width}, HH: #{height}"
           end
           
           depth = @io.read(2).unpack('n')[0]
@@ -145,14 +143,21 @@ module GroomLake
             scanline_image = scanline_image + @io.read(2).unpack('n')[0]
           end
           scan = @io.read(scanline_image)
-          write_image(Time.now.to_s + @io.pos.to_s + 'brush', width, height, scan)
           
-          @io.read(offset) if @subversion == 1
-          if(@subversion == 2)
-            @io.read(8)
-            @io.read(offset)
-          end
+          puts "FINAL #{@io.pos}"
+          #write_image(Time.now.to_s + @io.pos.to_s + 'brush', width, height, scan)
+          
+          # @io.read(offset) if @subversion == 1
+          # if(@subversion == 2)
+          #   @io.read(8)
+          #   @io.read(offset)
+          # end
         end
+        
+        puts @io.readchar
+        
+        
+        
     end
     
     # Unpack a scanline image using the PackBits algorithm.
@@ -190,7 +195,7 @@ module GroomLake
   end
 end
 
-#GroomLake::Brush.new('../../test/presets/scary-girl.abr')
+GroomLake::Brush.new('../../test/presets/scary-girl.abr')
 #GroomLake::Brush.new('../../test/presets/cs2-square-brushes.abr')
 #GroomLake::Brush.new('../../test/presets/onesquare24hard.abr')
-GroomLake::Brush.new('../../test/presets/cs2-oldbooks.abr')
+#GroomLake::Brush.new('../../test/presets/cs2-oldbooks.abr')
