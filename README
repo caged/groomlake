@@ -1,7 +1,8 @@
-This code is OLD and may not work AT ALL anymore.  It was a crazy idea I had way back when.  At one point in time it used to work
-to some extent.  It parses Photoshop Brush (ABR) files and generates PNG images.  It could also extract 
-color information from color palette files.
+This code is OLD and may not work AT ALL anymore.  It was a crazy idea I had way back when.  
+At one point in time it used to workto some extent.  It parses Photoshop Brush (ABR) files and 
+generates PNG images.  It could also extract color information from color palette files.
 
-Just figured I'd Open Source it since I'm no longer doing anything with it and someone, somewhere might find it useful.
+Just figured I'd Open Source it since I'm no longer doing anything with it and someone, somewhere 
+might find it useful.
 
 Use it under an MIT LICENSE
